@@ -1,0 +1,32 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Choose a model source",
+        "menu_options": { "local": "Local models", "remote": "Remote Pascal publisher" }
+      },
+      "reconfigure": {
+        "title": "Change the model source",
+        "menu_options": { "local": "Local models", "remote": "Remote Pascal publisher" }
+      },
+      "local": {
+        "title": "Local models",
+        "description": "Confirm that lite.png and full.png are in floorplan_models in the Home Assistant configuration directory."
+      },
+      "remote": {
+        "title": "Remote Pascal publisher",
+        "data": {
+          "origin": "Publisher address",
+          "token": "Publisher read token"
+        }
+      }
+    },
+    "error": {
+      "invalid_origin": "Enter an HTTPS origin or a private IPv4 HTTP origin, without a path.",
+      "invalid_token": "The publisher did not accept this read token.",
+      "cannot_connect": "Could not read both published floor plan packages.",
+      "invalid_local_packages": "Local Lite and Full packages must both be readable PNG files."
+    },
+    "abort": { "already_configured": "The floor plan publisher is already connected." }
+  }
+}

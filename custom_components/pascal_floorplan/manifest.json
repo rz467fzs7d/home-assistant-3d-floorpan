@@ -1,0 +1,12 @@
+{
+  "domain": "pascal_floorplan",
+  "name": "3D Floor Plan",
+  "codeowners": ["@rz467fzs7d"],
+  "config_flow": true,
+  "dependencies": ["http"],
+  "documentation": "https://github.com/rz467fzs7d/home-assistant-3d-floorpan",
+  "issue_tracker": "https://github.com/rz467fzs7d/home-assistant-3d-floorpan/issues",
+  "integration_type": "service",
+  "iot_class": "local_polling",
+  "version": "0.1.0"
+}
