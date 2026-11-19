@@ -16,7 +16,7 @@ from homeassistant.config_entries import SOURCE_RECONFIGURE, SOURCE_USER
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 
-DOMAIN = "pascal_floorplan"
+DOMAIN = "floorplan_3d"
 ROUTE = f"/api/{DOMAIN}/lite.png"
 TOKEN = "A" * 32
 PNG = b"\x89PNG\r\n\x1a\n"
@@ -58,6 +58,11 @@ class HomeAssistantTests(IsolatedAsyncioTestCase):
             signed = async_sign_path(hass, ROUTE, timedelta(minutes=1), refresh_token_id=refresh.id)
             async with TestClient(TestServer(hass.http.app)) as client:
                 self.assertEqual((await client.get(ROUTE)).status, 401)
+                legacy_route = "/api/pascal_floorplan/lite.png"
+                self.assertEqual((await client.get(legacy_route)).status, 401)
+                legacy_signed = async_sign_path(hass, legacy_route, timedelta(minutes=1), refresh_token_id=refresh.id)
+                async with client.get(legacy_signed) as legacy_reply:
+                    self.assertEqual(legacy_reply.status, 200)
                 async with client.get(signed) as reply:
                     self.assertEqual(reply.status, 200)
                     self.assertEqual(await reply.read(), PNG + b"local lite")
@@ -70,7 +75,7 @@ class HomeAssistantTests(IsolatedAsyncioTestCase):
                 app = web.Application()
                 app.router.add_get("/{file}", serve)
                 async with TestServer(app) as publisher:
-                    integration_root = "custom_components.pascal_floorplan"
+                    integration_root = "custom_components.floorplan_3d"
                     # Only the test fixture bypasses the private-address rule to run on loopback.
                     with patch(f"{integration_root}.config_flow.publisher_origin", return_value=publisher.make_url("/")), patch(
                         f"{integration_root}.publisher_origin", return_value=publisher.make_url("/")
@@ -128,3 +133,60 @@ class HomeAssistantTests(IsolatedAsyncioTestCase):
                             content = await reply.read()
                             self.assertTrue(content.startswith(PNG))
                             self.assertNotIn(TOKEN.encode(), content)
+
+
+    async def test_native_legacy_migration_preserves_settings_and_unload(self):
+        with TemporaryDirectory(delete=False) as folder:
+            self.addCleanup(rmtree, folder)
+            root = Path(folder)
+            copytree(Path(__file__).resolve().parents[1] / "custom_components", root / "custom_components")
+            packages = root / "floorplan_models"
+            packages.mkdir()
+            for name in ("lite", "full"):
+                (packages / (name + ".png")).write_bytes(PNG + name.encode())
+            hass = HomeAssistant(folder)
+            loader.async_setup(hass)
+            hass.config.skip_pip = True
+            self.addAsyncCleanup(hass.async_stop, force=True)
+            with patch.object(bootstrap, "DEFAULT_INTEGRATIONS", set()):
+                await bootstrap.async_from_config_dict(
+                    {"http": {"server_host": "127.0.0.1", "server_port": unused_port()}}, hass
+                )
+            flow = hass.config_entries.flow
+            old = await flow.async_init("pascal_floorplan", context={"source": SOURCE_USER})
+            await flow.async_configure(old["flow_id"], {"next_step_id": "local"})
+            created = await flow.async_configure(old["flow_id"], {})
+            old_entry = created["result"]
+            hass.config_entries.async_update_entry(old_entry, options={"fixture": "preserve"})
+            await hass.async_block_till_done()
+            old_cache = root / ".storage" / "pascal_floorplan" / old_entry.entry_id
+            old_cache.mkdir(parents=True)
+            (old_cache / "cached-artifact").write_bytes(b"verified original bytes")
+            await hass.config_entries.async_reload(old_entry.entry_id)
+            current_cache = root / ".storage" / DOMAIN / old_entry.entry_id
+            self.assertEqual((current_cache / "cached-artifact").read_bytes(), b"verified original bytes")
+            (current_cache / "cached-artifact").write_bytes(b"newer active cache")
+            upgrade = await flow.async_init(DOMAIN, context={"source": SOURCE_USER})
+            self.assertIn("migrate", upgrade["menu_options"])
+            migrated = await flow.async_configure(upgrade["flow_id"], {"next_step_id": "migrate"})
+            self.assertEqual(migrated["type"], FlowResultType.CREATE_ENTRY)
+            new_entry = migrated["result"]
+            await hass.async_block_till_done()
+            self.assertEqual(dict(new_entry.data), dict(old_entry.data))
+            self.assertEqual(dict(new_entry.options), dict(old_entry.options))
+            self.assertEqual(new_entry.state.value, "loaded")
+            migrated_cache = root / ".storage" / DOMAIN / new_entry.entry_id
+            self.assertEqual((migrated_cache / "cached-artifact").read_bytes(), b"newer active cache")
+            self.assertTrue(await hass.config_entries.async_remove(old_entry.entry_id))
+            self.assertIn(DOMAIN, hass.data)
+            self.assertEqual(hass.data[DOMAIN + "_owner"], new_entry.entry_id)
+            user = await hass.auth.async_create_user("Migration fixture")
+            refresh = await hass.auth.async_create_refresh_token(user, "http://localhost")
+            async with TestClient(TestServer(hass.http.app)) as client:
+                for domain in (DOMAIN, "pascal_floorplan"):
+                    route = f"/api/{domain}/lite.png"
+                    self.assertEqual((await client.get(route)).status, 401)
+                    signed = async_sign_path(hass, route, timedelta(minutes=1), refresh_token_id=refresh.id)
+                    async with client.get(signed) as reply:
+                        self.assertEqual(reply.status, 200)
+                        self.assertEqual(await reply.read(), PNG + b"lite")

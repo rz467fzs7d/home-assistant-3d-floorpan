@@ -6,7 +6,8 @@
         "menu_options": {
           "local": "Local models",
           "remote": "Remote Pascal publisher",
-          "editor": "Pascal Editor (direct)"
+          "editor": "Pascal Editor (direct)",
+          "migrate": "Migrate existing floor plan configuration"
         }
       },
       "reconfigure": {
@@ -48,7 +49,8 @@
       "cannot_connect_editor": "Could not read both native scenes from Pascal Editor."
     },
     "abort": {
-      "already_configured": "The floor plan publisher is already connected."
+      "already_configured": "The floor plan publisher is already connected.",
+      "no_legacy_entry": "No single legacy configuration is available to migrate."
     }
   }
 }

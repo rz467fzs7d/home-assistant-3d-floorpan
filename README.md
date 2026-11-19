@@ -7,7 +7,7 @@ it is not a floor plan editor or a ready-made Lovelace card.
 
 ## Model Source
 
-Install `custom_components/pascal_floorplan` under your Home Assistant
+Install `custom_components/floorplan_3d` under your Home Assistant
 configuration directory. Restart Core for first discovery, then choose
 **3D Floor Plan** in **Settings > Devices & services > Add integration**.
 Requires Home Assistant 2026.11 or newer.
@@ -20,7 +20,7 @@ Requires Home Assistant 2026.11 or newer.
 
 Use **Reconfigure** to switch sources or update the address/token. Cards use
 the same HA routes with any source:
-`/api/pascal_floorplan/lite.png` and `/api/pascal_floorplan/full.png`.
+`/api/floorplan_3d/lite.png` and `/api/floorplan_3d/full.png`.
 Both require HA auth (or temporary signed URLs). The remote token stays on
 the HA server. Remote mode streams on demand without polling or caching model
 files on HA. Any authenticated HA user can read the configured floor plan.
@@ -37,7 +37,7 @@ Full and Lite are independent, native Editor scenes. Prepare their geometry in
 your authoring workflow; the integration preserves their graphs/assets rather
 than generating or simplifying Lite. On model requests it checks the selected
 scene, verifies GLB artifact hashes, and atomically writes a package under HA's
-private `.storage/pascal_floorplan/<entry-id>/` directory. Artifact files are
+private `.storage/floorplan_3d/<entry-id>/` directory. Artifact files are
 shared by digest within that entry. No periodic scene polling is installed.
 A changed or unavailable source fails explicitly; a previous cached package is
 not silently substituted after an invalid update.
@@ -133,3 +133,22 @@ node --test tests/*.test.mjs
 
 Tests use temporary local files, a loopback publisher, an isolated HA
 instance, and simulated device events. They do not contact a live home.
+
+## Upgrade from the legacy integration domain
+
+Version 0.3.0 uses the generic `floorplan_3d` integration domain, API routes and
+private cache directory. Pascal remains the name of one source and package
+format. Install both `custom_components/floorplan_3d` and the thin
+`custom_components/pascal_floorplan` compatibility directory when upgrading.
+After the required Core restart, add **3D Floor Plan** and choose **Migrate
+existing floor plan configuration**. HA copies the old source settings and
+options without exposing or requesting the existing token. Reusable cached
+resources are copied on setup. Verify the new entry and views, then remove the
+legacy entry through HA's normal integration UI. The old cache can be archived
+once the legacy entry is removed.
+
+Existing cards using `/api/pascal_floorplan/{lite,full}.png` continue working
+with identical HA authentication and signing. New cards and the frontend helper
+use `/api/floorplan_3d/{lite,full}.png`. The compatibility component imports the
+canonical implementation; it does not keep a second source or resource cache.
+Renderer metadata remains in `floorplan_models/editor-bindings.json`.

@@ -1,4 +1,4 @@
-const routes = { lite: '/api/pascal_floorplan/lite.png', full: '/api/pascal_floorplan/full.png' }
+const routes = { lite: '/api/floorplan_3d/lite.png', full: '/api/floorplan_3d/full.png' }
 
 export async function fetchPascalPackage(hass, mode = 'lite', { signal, fetcher = fetch } = {}) {
   if (!Object.hasOwn(routes, mode)) throw new Error('Expected lite or full')

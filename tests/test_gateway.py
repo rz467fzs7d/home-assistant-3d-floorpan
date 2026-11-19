@@ -10,7 +10,7 @@ from aiohttp import ClientSession, web
 from aiohttp.test_utils import TestClient, TestServer
 
 spec = importlib.util.spec_from_file_location(
-    "gateway", Path(__file__).resolve().parents[1] / "custom_components/pascal_floorplan/gateway.py"
+    "gateway", Path(__file__).resolve().parents[1] / "custom_components/floorplan_3d/gateway.py"
 )
 gateway = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gateway)

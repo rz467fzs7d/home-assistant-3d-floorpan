@@ -13,7 +13,7 @@ from unittest import IsolatedAsyncioTestCase
 from aiohttp import ClientSession, web
 from aiohttp.test_utils import TestServer
 
-spec = importlib.util.spec_from_file_location("editor", Path(__file__).resolve().parents[1] / "custom_components/pascal_floorplan/editor.py")
+spec = importlib.util.spec_from_file_location("editor", Path(__file__).resolve().parents[1] / "custom_components/floorplan_3d/editor.py")
 editor = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(editor)
 TOKEN = "test-scene-token-" + "A" * 32

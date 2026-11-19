@@ -13,11 +13,11 @@ test('loads the selected package through a signed HA route', async () => {
   const bytes = Buffer.concat([png, header, payload, Buffer.alloc(4)])
   const hass = { callWS(message) {
     assert.equal(message.type, 'auth/sign_path')
-    assert.equal(message.path, '/api/pascal_floorplan/full.png')
+    assert.equal(message.path, '/api/floorplan_3d/full.png')
     return { path: message.path + '?authSig=fixture' }
   } }
   assert.deepEqual(await fetchPascalPackage(hass, 'full', { fetcher(path) {
-    assert.equal(path, '/api/pascal_floorplan/full.png?authSig=fixture')
+    assert.equal(path, '/api/floorplan_3d/full.png?authSig=fixture')
     return new Response(bytes)
   } }), room)
   await assert.rejects(fetchPascalPackage(hass, 'other'), /lite or full/)
