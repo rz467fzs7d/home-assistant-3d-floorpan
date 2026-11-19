@@ -3,11 +3,19 @@
     "step": {
       "user": {
         "title": "Choose a model source",
-        "menu_options": { "local": "Local models", "remote": "Remote Pascal publisher" }
+        "menu_options": {
+          "local": "Local models",
+          "remote": "Remote Pascal publisher",
+          "editor": "Pascal Editor (direct)"
+        }
       },
       "reconfigure": {
         "title": "Change the model source",
-        "menu_options": { "local": "Local models", "remote": "Remote Pascal publisher" }
+        "menu_options": {
+          "local": "Local models",
+          "remote": "Remote Pascal publisher",
+          "editor": "Pascal Editor (direct)"
+        }
       },
       "local": {
         "title": "Local models",
@@ -19,14 +27,28 @@
           "origin": "Publisher address",
           "token": "Publisher read token"
         }
+      },
+      "editor": {
+        "title": "Pascal Editor (direct)",
+        "description": "Read Full and Lite from separate native Editor scenes. Keep the scene API token on Home Assistant.",
+        "data": {
+          "origin": "Pascal Editor address",
+          "token": "Scene API token",
+          "full_scene_id": "Full scene ID",
+          "lite_scene_id": "Lite scene ID"
+        }
       }
     },
     "error": {
       "invalid_origin": "Enter an HTTPS origin or a private IPv4 HTTP origin, without a path.",
       "invalid_token": "The publisher did not accept this read token.",
       "cannot_connect": "Could not read both published floor plan packages.",
-      "invalid_local_packages": "Local Lite and Full packages must both be readable PNG files."
+      "invalid_local_packages": "Local Lite and Full packages must both be readable PNG files.",
+      "invalid_editor_token": "The Editor did not accept this scene API token.",
+      "cannot_connect_editor": "Could not read both native scenes from Pascal Editor."
     },
-    "abort": { "already_configured": "The floor plan publisher is already connected." }
+    "abort": {
+      "already_configured": "The floor plan publisher is already connected."
+    }
   }
 }

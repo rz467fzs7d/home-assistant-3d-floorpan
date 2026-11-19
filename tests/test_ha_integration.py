@@ -42,7 +42,7 @@ class HomeAssistantTests(IsolatedAsyncioTestCase):
             flow = hass.config_entries.flow
             first = await flow.async_init(DOMAIN, context={"source": SOURCE_USER})
             self.assertEqual(first["type"], FlowResultType.MENU)
-            self.assertEqual(first["menu_options"], ["local", "remote"])
+            self.assertEqual(first["menu_options"], ["local", "remote", "editor"])
             current = await flow.async_configure(first["flow_id"], {"next_step_id": "local"})
             self.assertEqual(current["step_id"], "local")
             rejected = await flow.async_configure(first["flow_id"], {})
@@ -93,3 +93,38 @@ class HomeAssistantTests(IsolatedAsyncioTestCase):
                         async with client.get(signed) as reply:
                             self.assertEqual(reply.status, 200)
                             self.assertEqual(await reply.read(), PNG + b"lite.png")
+
+                async def native_scene(request):
+                    if request.headers.get("Authorization") != f"Bearer {TOKEN}":
+                        raise web.HTTPUnauthorized()
+                    name = request.match_info["scene"]
+                    return web.json_response({"id": name, "version": 1, "graph": {"rootNodeIds": [], "nodes": {}}})
+
+                native = web.Application()
+                native.router.add_get("/api/scenes/{scene}", native_scene)
+                async with TestServer(native) as editor:
+                    with patch(f"{integration_root}.config_flow.publisher_origin", return_value=editor.make_url("/")), patch(
+                        f"{integration_root}.publisher_origin", return_value=editor.make_url("/")
+                    ):
+                        updated = await flow.async_init(
+                            DOMAIN, context={"source": SOURCE_RECONFIGURE, "entry_id": entry.entry_id}
+                        )
+                        await flow.async_configure(updated["flow_id"], {"next_step_id": "editor"})
+                        rejected = await flow.async_configure(updated["flow_id"], {
+                            "origin": "http://192.168.1.20:3000", "token": "B" * 32,
+                            "full_scene_id": "full", "lite_scene_id": "lite",
+                        })
+                        self.assertEqual(rejected["errors"], {"token": "invalid_editor_token"})
+                        result = await flow.async_configure(updated["flow_id"], {
+                            "origin": "http://192.168.1.20:3000", "token": TOKEN,
+                            "full_scene_id": "full", "lite_scene_id": "lite",
+                        })
+                        self.assertEqual(result["reason"], "reconfigure_successful")
+                        await hass.async_block_till_done()
+                        self.assertEqual(entry.data["source"], "editor")
+                        self.assertEqual((await client.get(ROUTE)).status, 401)
+                        async with client.get(signed) as reply:
+                            self.assertEqual(reply.status, 200)
+                            content = await reply.read()
+                            self.assertTrue(content.startswith(PNG))
+                            self.assertNotIn(TOKEN.encode(), content)

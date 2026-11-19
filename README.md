@@ -14,15 +14,50 @@ Requires Home Assistant 2026.11 or newer.
 
 | Source | Setup |
 | --- | --- |
+| **Pascal Editor (direct)** | Enter the Editor origin, scene API token, Full scene ID and Lite scene ID. HA reads native scene/artifact APIs and builds private model packages itself. |
 | **Local models** | Put `lite.png` and `full.png` in `floorplan_models/` under the HA configuration directory, outside `www/`. Replace them by renaming completed files into place. |
 | **Remote Pascal publisher** | Enter the publisher origin and dedicated read token. Use HTTPS for remote hosts; unencrypted HTTP is limited to private IPv4 addresses. |
 
 Use **Reconfigure** to switch sources or update the address/token. Cards use
-the same HA routes with either source:
+the same HA routes with any source:
 `/api/pascal_floorplan/lite.png` and `/api/pascal_floorplan/full.png`.
 Both require HA auth (or temporary signed URLs). The remote token stays on
 the HA server. Remote mode streams on demand without polling or caching model
 files on HA. Any authenticated HA user can read the configured floor plan.
+
+### Direct Pascal Editor
+
+Choose **Pascal Editor (direct)** when adding or reconfiguring the integration.
+Use the Editor service's origin and `PASCAL_SCENE_API_TOKEN`; this is separate
+from a publisher read token. HA reads `/api/scenes/{id}` and the referenced
+`/api/artifacts/{sha256}` files. The Editor remains a general-purpose service;
+it needs no HA-specific plugin, image patch or auxiliary publisher container.
+
+Full and Lite are independent, native Editor scenes. Prepare their geometry in
+your authoring workflow; the integration preserves their graphs/assets rather
+than generating or simplifying Lite. On model requests it checks the selected
+scene, verifies GLB artifact hashes, and atomically writes a package under HA's
+private `.storage/pascal_floorplan/<entry-id>/` directory. Artifact files are
+shared by digest within that entry. No periodic scene polling is installed.
+A changed or unavailable source fails explicitly; a previous cached package is
+not silently substituted after an invalid update.
+
+For renderers with additional entity bindings, optionally place
+`floorplan_models/editor-bindings.json` under the HA configuration directory:
+
+```json
+{
+  "my-full-scene": {"bindings": {"doors": {"door-node": "binary_sensor.entry"}}},
+  "my-lite-scene": {"bindings": {"doors": {"door-node": "binary_sensor.entry"}}}
+}
+```
+
+Keys are scene IDs; values are renderer metadata copied into the model package.
+Do not store credentials here. Scene data fields (`version`, `graph`, `assets`,
+`sceneVersion`) cannot be overridden. The metadata file stays on HA, outside
+`www`, and is reread when a model is requested. The API token stays on HA and
+is never embedded in a model or frontend URL. The existing authenticated model
+routes and frontend package loader work with all three sources.
 
 ### Publisher contract
 
@@ -30,9 +65,8 @@ Serve `GET /lite.png` and `GET /full.png` using a bearer read token. Each
 response is a Pascal PNG carrier with embedded `psCl` scene data, served as
 `image/png` with a content length (up to 64 MiB). Redirects and content
 encoding are not supported. A SHA-256 ETag and conditional GET are optional.
-The publisher can run anywhere reachable from HA. Point the integration at the
-publisher, not directly at the Pascal Editor: the editor's scene/artifact API
-is used to build the packages, but is not a model download endpoint.
+The publisher can run anywhere reachable from HA. In the legacy remote mode, point the integration at the publisher. Use the
+separate direct Editor mode for native scene/artifact APIs.
 
 ## Live State and Position
 
